@@ -7,16 +7,24 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import easyBrainLogo from "./assets/easybrain-logo.png";
-import {
-  GOOGLE_SCRIPT_URL,
-  LABOR_TYPES,
-  VEHICLES,
-  APPROVAL_STATUSES,
-  DEFAULT_SETTINGS,
-} from "./constants/config";
-//import LoginScreen from "./components/LoginScreen";
+import LoginScreen from "./components/LoginScreen";
 // ---------------------------------------------------------------------------
 // CONFIG
+// ---------------------------------------------------------------------------
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzcylrVrJoJ0nBB9jCnvX2PM1KaWB-iTC9kVqGpaeH8VYro2ls5LlNLZeEFI7IGEsBT/exec";
+
+const LABOR_TYPES = ["Demo", "Framing", "Drywall", "Tile", "Plumbing", "Electrical", "Painting", "Finish Work"];
+const VEHICLES = ["Truck 1", "Truck 2", "Personal Vehicle"];
+const APPROVAL_STATUSES = ["Pending", "Approved"];
+
+const DEFAULT_SETTINGS = {
+  companyName: "P&P Remodeling Services",
+  logoUrl: "",
+  googleScriptUrl: GOOGLE_SCRIPT_URL,
+  mileageRate: 0.67,
+};
+
+// ---------------------------------------------------------------------------
 // STORAGE
 // NOTE: This standalone build uses plain localStorage instead of the
 // Claude-Artifacts-only `window.storage` API (which does not exist outside
@@ -102,21 +110,9 @@ function calcHours(clockIn, clockOut) {
 function fmtHours(h) {
   return (Math.round((h || 0) * 100) / 100).toFixed(2);
 }
-function fmtDate(value) {
-  if (!value) return "";
-
-  const d = new Date(value);
-
-  if (isNaN(d.getTime())) {
-    return String(value);
-  }
-
-  return d.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function fmtDate(dstr) {
+  const d = new Date(dstr + "T00:00:00");
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -276,129 +272,81 @@ function LoginScreen({
   const activeEmployees = employees.filter((e) => e.active !== false);
 
   return (
-    <div className="min-h-screen bg-stone-900 flex items-center justify-center px-5">
-      <div className="w-full max-w-md">
+    <div className="mb-10 text-center">
 
-        {/* Logo */}
-        <div className="mb-10 text-center">
-          <img
-            src={easyBrainLogo}
-            alt="EasyBrain"
-            className="w-28 h-auto mx-auto mb-5"
-          />
+  <img
+    src={easyBrainLogo}
+    alt="EasyBrain"
+    className="w-28 h-auto mx-auto mb-5"
+  />
 
-          <h1 className="text-3xl font-extrabold tracking-wide text-white uppercase">
-            EasyBrain Crew
-          </h1>
+  <h1 className="text-3xl font-extrabold tracking-wide text-white uppercase">
+    EasyBrain Crew
+  </h1>
 
-          <p className="text-orange-500 font-semibold mt-2">
-            Operational Intelligence Platform
-          </p>
+  <p className="text-orange-500 font-semibold mt-2">
+    Operational Intelligence Platform
+  </p>
 
-          <p className="text-stone-500 text-sm mt-3">
-            Powered by
-          </p>
+  <p className="text-stone-500 text-sm mt-3">
+    Powered by
+  </p>
 
-          <p className="text-white font-bold">
-            P&amp;P Remodeling Services
-          </p>
-        </div>
+  <p className="text-white font-bold">
+    P&amp;P Remodeling Services
+  </p>
 
-        {/* Connection Status */}
+</div>
 
-        {connectionStatus === "connected" && (
-          <AlertBox type="success">
-            ✓ Connected to server
-          </AlertBox>
-        )}
-
+        {connectionStatus === "connected" && <AlertBox type="success">✓ Connected to server</AlertBox>}
         {connectionStatus === "partial" && (
           <AlertBox type="warning">
             ⚠ Employees loaded, but some data failed:
             <ul className="mt-1 ml-3 list-disc">
-              {loadErrors.map((e, i) => (
-                <li key={i}>{e}</li>
-              ))}
+              {loadErrors.map((e, i) => <li key={i}>{e}</li>)}
             </ul>
           </AlertBox>
         )}
-
         {connectionStatus === "error" && (
           <AlertBox type="error">
             ✗ Cannot reach server. Check Settings.
             {loadErrors.length > 0 && (
               <ul className="mt-1 ml-3 list-disc">
-                {loadErrors.map((e, i) => (
-                  <li key={i}>{e}</li>
-                ))}
+                {loadErrors.map((e, i) => <li key={i}>{e}</li>)}
               </ul>
             )}
           </AlertBox>
         )}
-
-        {connectionStatus === "offline" && (
-          <AlertBox type="warning">
-            ⚠ Offline mode
-          </AlertBox>
-        )}
-
-        {/* Login Card */}
+        {connectionStatus === "offline" && <AlertBox type="warning">⚠ Offline mode</AlertBox>}
 
         <div className="bg-stone-50 border-2 border-stone-900 rounded-sm p-4 shadow-[4px_4px_0_0_#ea580c]">
+          {loading && <p className="text-stone-500 text-sm mb-3 flex items-center gap-2"><RefreshCw size={14} className="animate-spin" /> Loading…</p>}
 
-          {loading && (
-            <p className="text-stone-500 text-sm mb-3 flex items-center gap-2">
-              <RefreshCw size={14} className="animate-spin" />
-              Loading...
-            </p>
-          )}
-
-          <p className="text-xs font-bold uppercase text-stone-500 mb-3">
-            Select your name
-          </p>
-
+          <p className="text-xs font-bold uppercase text-stone-500 mb-3">Select your name</p>
           <div className="grid grid-cols-1 gap-2 mb-4 max-h-64 overflow-y-auto">
             {activeEmployees.map((emp) => (
               <button
                 key={emp.id}
                 onClick={() => setSelected(emp.id)}
-                className={`min-h-[52px] px-4 rounded-sm border-2 flex items-center gap-2 font-semibold transition ${selected === emp.id
-                    ? "bg-orange-600 border-orange-900 text-white"
-                    : "bg-white border-stone-300 text-stone-900 hover:border-stone-900"
-                  }`}
+                className={`min-h-[52px] px-4 rounded-sm border-2 flex items-center gap-2 font-semibold transition ${
+                  selected === emp.id ? "bg-orange-600 border-orange-900 text-white" : "bg-white border-stone-300 text-stone-900 hover:border-stone-900"
+                }`}
               >
                 <User size={18} />
                 {emp.name}
               </button>
             ))}
-
-            {activeEmployees.length === 0 && (
-              <p className="text-stone-500 text-sm">
-                No employees loaded.
-              </p>
-            )}
+            {activeEmployees.length === 0 && <p className="text-stone-500 text-sm">No employees loaded.</p>}
           </div>
 
-          <BigButton
-            tone="orange"
-            className="w-full"
-            disabled={!selected}
-            onClick={() => onLogin(selected)}
-          >
-            <Check size={18} />
-            Continue
+          <BigButton tone="orange" className="w-full" disabled={!selected} onClick={() => onLogin(selected)}>
+            <Check size={18} /> Continue
           </BigButton>
-
         </div>
 
-        <button
-          onClick={onOpenSettings}
-          className="text-stone-500 text-xs text-center mt-6 hover:text-orange-500 flex items-center justify-center gap-1 w-full"
-        >
-          <SettingsIcon size={12} />
-          App Settings
+        <button onClick={onOpenSettings} className="text-stone-500 text-xs text-center mt-6 hover:text-orange-500 flex items-center justify-center gap-1">
+          <SettingsIcon size={12} /> App Settings
         </button>
-
       </div>
     </div>
   );
@@ -440,8 +388,9 @@ function BottomNav({ view, setView }) {
             <button
               key={it.id}
               onClick={() => setView(it.id)}
-              className={`flex flex-col items-center justify-center gap-1 py-3 border-t-2 transition ${view === it.id ? "border-orange-500 text-orange-500" : "border-transparent text-stone-400"
-                }`}
+              className={`flex flex-col items-center justify-center gap-1 py-3 border-t-2 transition ${
+                view === it.id ? "border-orange-500 text-orange-500" : "border-transparent text-stone-400"
+              }`}
             >
               <Icon size={18} />
               <span className="text-[9px] font-bold uppercase">{it.label}</span>
@@ -659,12 +608,13 @@ function EntryForm({ draft, employees, customers, projects, onSave, onCancel, is
                 key={s}
                 type="button"
                 onClick={() => set("approval", s)}
-                className={`flex-1 min-h-[44px] rounded-sm border-2 font-bold uppercase text-xs tracking-wide transition ${form.approval === s
+                className={`flex-1 min-h-[44px] rounded-sm border-2 font-bold uppercase text-xs tracking-wide transition ${
+                  form.approval === s
                     ? s === "Approved"
                       ? "bg-emerald-700 border-emerald-900 text-white"
                       : "bg-stone-700 border-stone-900 text-white"
                     : "bg-white border-stone-300 text-stone-600"
-                  }`}
+                }`}
               >
                 {s}
               </button>
@@ -725,7 +675,7 @@ function Records({ logs, employees, customers, projects, onEdit, onDelete, onNew
       return hay.includes(q);
     }).sort((a, b) => (a.date < b.date ? 1 : -1));
   }, [logs, query]);
-  console.log(logs);
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-5 pb-28">
       <div className="flex gap-2 mb-3">
@@ -741,354 +691,351 @@ function Records({ logs, employees, customers, projects, onEdit, onDelete, onNew
       <p className="text-xs text-stone-500 mb-2">{filtered.length} records</p>
 
       <div className="space-y-2">
-        {filtered.map((l) => {
-          console.log(l.clockIn, typeof l.clockIn);
-          console.log(l.clockOut, typeof l.clockOut);
-          return (
-            <Card key={l.id} className="p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-xs text-stone-500">{fmtDate(l.date)} · {nameOf(employees, l.employeeId)}</p>
-                  <p className="font-semibold text-sm">{nameOf(projects, l.projectId)}</p>
-                  <p className="text-xs text-stone-400">{l.clockIn}–{l.clockOut} · {fmtHours(calcHours(l.clockIn, l.clockOut))} hrs</p>
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  <button onClick={() => onEdit(l)} className="p-2 border-2 border-stone-900 rounded-sm hover:bg-stone-900 hover:text-white transition">
-                    <Pencil size={14} />
-                  </button>
-                  <button onClick={() => onDelete(l.id)} className="p-2 border-2 border-red-800 text-red-800 rounded-sm hover:bg-red-800 hover:text-white transition">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+        {filtered.map((l) => (
+          <Card key={l.id} className="p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs text-stone-500">{fmtDate(l.date)} · {nameOf(employees, l.employeeId)}</p>
+                <p className="font-semibold text-sm">{nameOf(projects, l.projectId)}</p>
+                <p className="text-xs text-stone-400">{l.clockIn}–{l.clockOut} · {fmtHours(calcHours(l.clockIn, l.clockOut))} hrs</p>
               </div>
-            </Card>
-          );
-        })}
+              <div className="flex gap-1 shrink-0">
+                <button onClick={() => onEdit(l)} className="p-2 border-2 border-stone-900 rounded-sm hover:bg-stone-900 hover:text-white transition">
+                  <Pencil size={14} />
+                </button>
+                <button onClick={() => onDelete(l.id)} className="p-2 border-2 border-red-800 text-red-800 rounded-sm hover:bg-red-800 hover:text-white transition">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          </Card>
+        ))}
         {filtered.length === 0 && <Card className="p-6 text-center text-stone-500 text-sm">No records found.</Card>}
       </div>
     </div>
   );
 }
-  //---------------------------------------------------------------------------
-  // SETTINGS PAGE
-  // ---------------------------------------------------------------------------
-  function SettingsPage({ settings, onSave, onTestConnection, testStatus, connectionStatus }) {
-    const [form, setForm] = useState(settings);
-    const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-    const [saved, setSaved] = useState(false);
 
-    const handleSave = () => {
-      onSave(form);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    };
+// ---------------------------------------------------------------------------
+// SETTINGS PAGE
+// ---------------------------------------------------------------------------
+function SettingsPage({ settings, onSave, onTestConnection, testStatus, connectionStatus }) {
+  const [form, setForm] = useState(settings);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const [saved, setSaved] = useState(false);
 
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-5 pb-28">
-        <Card className="p-4 mb-4">
-          <h2 className="font-extrabold uppercase text-stone-900 mb-4">App Settings</h2>
+  const handleSave = () => {
+    onSave(form);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
 
-          {connectionStatus === "connected" && <AlertBox type="success">✓ Connected to server</AlertBox>}
-          {connectionStatus === "error" && <AlertBox type="error">✗ Cannot reach server</AlertBox>}
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-5 pb-28">
+      <Card className="p-4 mb-4">
+        <h2 className="font-extrabold uppercase text-stone-900 mb-4">App Settings</h2>
 
-          <Field label="Company Name">
-            <input value={form.companyName} onChange={(e) => set("companyName", e.target.value)} className={`${inputCls} font-sans`} />
-          </Field>
+        {connectionStatus === "connected" && <AlertBox type="success">✓ Connected to server</AlertBox>}
+        {connectionStatus === "error" && <AlertBox type="error">✗ Cannot reach server</AlertBox>}
 
-          <Field label="Google Script URL">
-            <textarea value={form.googleScriptUrl} onChange={(e) => set("googleScriptUrl", e.target.value)} className={`${inputCls} font-sans text-xs min-h-[60px] py-2`} />
-          </Field>
+        <Field label="Company Name">
+          <input value={form.companyName} onChange={(e) => set("companyName", e.target.value)} className={`${inputCls} font-sans`} />
+        </Field>
 
-          {testStatus && <AlertBox type={testStatus.ok ? "success" : "error"}>{testStatus.message}</AlertBox>}
-          {saved && <AlertBox type="success">✓ Settings saved!</AlertBox>}
+        <Field label="Google Script URL">
+          <textarea value={form.googleScriptUrl} onChange={(e) => set("googleScriptUrl", e.target.value)} className={`${inputCls} font-sans text-xs min-h-[60px] py-2`} />
+        </Field>
 
-          <div className="flex gap-2">
-            <BigButton tone="outline" className="flex-1" onClick={() => onTestConnection(form.googleScriptUrl)}>
-              <RefreshCw size={14} /> Test
-            </BigButton>
-            <BigButton tone="orange" className="flex-1" onClick={handleSave}>
-              <Check size={14} /> Save
-            </BigButton>
-          </div>
-        </Card>
-      </div>
-    );
-  }
+        {testStatus && <AlertBox type={testStatus.ok ? "success" : "error"}>{testStatus.message}</AlertBox>}
+        {saved && <AlertBox type="success">✓ Settings saved!</AlertBox>}
 
-  // ---------------------------------------------------------------------------
-  // MAIN APP
-  // ---------------------------------------------------------------------------
-  export default function App() {
-    const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-    const [employees, setEmployees] = useState([]);
-    const [customers, setCustomers] = useState([]);
-    const [projects, setProjects] = useState([]);
-    const [logs, setLogs] = useState([]);
-    const [dataLoading, setDataLoading] = useState(true);
-    const [connectionStatus, setConnectionStatus] = useState("loading");
-    const [loadErrors, setLoadErrors] = useState([]);
+        <div className="flex gap-2">
+          <BigButton tone="outline" className="flex-1" onClick={() => onTestConnection(form.googleScriptUrl)}>
+            <RefreshCw size={14} /> Test
+          </BigButton>
+          <BigButton tone="orange" className="flex-1" onClick={handleSave}>
+            <Check size={14} /> Save
+          </BigButton>
+        </div>
+      </Card>
+    </div>
+  );
+}
 
-    const [currentEmployeeId, setCurrentEmployeeId] = useState(null);
-    const [view, setView] = useState("dashboard");
-    const [activeClock, setActiveClock] = useState(null);
-    const [testStatus, setTestStatus] = useState(null);
-    const [showSettingsModal, setShowSettingsModal] = useState(false);
-    const [editingLog, setEditingLog] = useState(null);
-    const [showForm, setShowForm] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const [saveError, setSaveError] = useState(null);
-    const [saveSuccess, setSaveSuccess] = useState(null);
+// ---------------------------------------------------------------------------
+// MAIN APP
+// ---------------------------------------------------------------------------
+export default function App() {
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [employees, setEmployees] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState("loading");
+  const [loadErrors, setLoadErrors] = useState([]);
 
-    const currentEmployee = employees.find((e) => e.id === currentEmployeeId);
+  const [currentEmployeeId, setCurrentEmployeeId] = useState(null);
+  const [view, setView] = useState("dashboard");
+  const [activeClock, setActiveClock] = useState(null);
+  const [testStatus, setTestStatus] = useState(null);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [editingLog, setEditingLog] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [saveSuccess, setSaveSuccess] = useState(null);
 
-    // Load settings and data on startup
-    useEffect(() => {
-      (async () => {
-        const saved = await storageGet("pp-settings", true);
-        const settings = saved ? { ...DEFAULT_SETTINGS, ...saved } : DEFAULT_SETTINGS;
-        setSettings(settings);
-        await refreshAllData(settings.googleScriptUrl);
-      })();
-    }, []);
+  const currentEmployee = employees.find((e) => e.id === currentEmployeeId);
 
-    const refreshAllData = useCallback(async (scriptUrl) => {
-      setDataLoading(true);
-      setConnectionStatus("loading");
+  // Load settings and data on startup
+  useEffect(() => {
+    (async () => {
+      const saved = await storageGet("pp-settings", true);
+      const settings = saved ? { ...DEFAULT_SETTINGS, ...saved } : DEFAULT_SETTINGS;
+      setSettings(settings);
+      await refreshAllData(settings.googleScriptUrl);
+    })();
+  }, []);
 
-      if (!scriptUrl) {
-        setConnectionStatus("error");
-        setEmployees([]);
-        setCustomers([]);
-        setProjects([]);
-        setLogs([]);
-        setDataLoading(false);
-        return;
-      }
+  const refreshAllData = useCallback(async (scriptUrl) => {
+    setDataLoading(true);
+    setConnectionStatus("loading");
 
-      const [empResult, custResult, projResult, wlResult] = await Promise.allSettled([
-        loadEmployees(scriptUrl),
-        loadCustomers(scriptUrl),
-        loadProjects(scriptUrl),
-        loadWorkLogs(scriptUrl),
-      ]);
-
-      const errors = [];
-      if (empResult.status === "fulfilled") setEmployees(empResult.value);
-      else { setEmployees([]); errors.push(`employees: ${empResult.reason.message}`); }
-
-      if (custResult.status === "fulfilled") setCustomers(custResult.value);
-      else { setCustomers([]); errors.push(`customers: ${custResult.reason.message}`); }
-
-      if (projResult.status === "fulfilled") setProjects(projResult.value);
-      else { setProjects([]); errors.push(`projects: ${projResult.reason.message}`); }
-
-      if (wlResult.status === "fulfilled") setLogs(wlResult.value);
-      else { setLogs([]); errors.push(`workLogs: ${wlResult.reason.message}`); }
-
-      if (errors.length > 0) {
-        console.error("API errors:", errors);
-        setLoadErrors(errors);
-        // Still "connected" if at least employees loaded, since login can proceed
-        setConnectionStatus(empResult.status === "fulfilled" ? "partial" : "error");
-      } else {
-        setLoadErrors([]);
-        setConnectionStatus("connected");
-      }
-
+    if (!scriptUrl) {
+      setConnectionStatus("error");
+      setEmployees([]);
+      setCustomers([]);
+      setProjects([]);
+      setLogs([]);
       setDataLoading(false);
-    }, []);
+      return;
+    }
 
-    const handleTestConnection = async (scriptUrl) => {
-      setTestStatus({ ok: false, message: "Testing…" });
-      try {
-        await loadEmployees(scriptUrl);
-        setTestStatus({ ok: true, message: "✓ Connected! Employees loaded." });
-      } catch (err) {
-        setTestStatus({ ok: false, message: `✗ Error: ${err.message}` });
-      }
-    };
+    const [empResult, custResult, projResult, wlResult] = await Promise.allSettled([
+      loadEmployees(scriptUrl),
+      loadCustomers(scriptUrl),
+      loadProjects(scriptUrl),
+      loadWorkLogs(scriptUrl),
+    ]);
 
-    const handleSaveSettings = async (newSettings) => {
-      setSettings(newSettings);
-      await storageSet("pp-settings", newSettings, true);
-      refreshAllData(newSettings.googleScriptUrl);
-    };
+    const errors = [];
+    if (empResult.status === "fulfilled") setEmployees(empResult.value);
+    else { setEmployees([]); errors.push(`employees: ${empResult.reason.message}`); }
 
-    const handleClockIn = () => {
-      const now = new Date();
-      setActiveClock({ startedAt: now, clockIn: now.toTimeString().slice(0, 5) });
-    };
+    if (custResult.status === "fulfilled") setCustomers(custResult.value);
+    else { setCustomers([]); errors.push(`customers: ${custResult.reason.message}`); }
 
-    const blankDraft = (overrides = {}) => ({
-      id: null,
-      date: todayStr(),
-      employeeId: currentEmployeeId,
-      customerId: "",
-      projectId: "",
-      clockIn: "",
-      clockOut: "",
-      mileage: "",
-      laborType: "",
-      vehicle: "",
-      approval: "Pending",
-      description: "",
-      materials: "",
-      notes: "",
-      photo: "",
-      ...overrides,
-    });
+    if (projResult.status === "fulfilled") setProjects(projResult.value);
+    else { setProjects([]); errors.push(`projects: ${projResult.reason.message}`); }
 
-    const handleClockOut = () => {
-      const now = new Date();
-      const draft = blankDraft({ clockIn: activeClock.clockIn, clockOut: now.toTimeString().slice(0, 5) });
-      setActiveClock(null);
-      setEditingLog(draft);
-      setSaveError(null);
-      setShowForm(true);
-    };
+    if (wlResult.status === "fulfilled") setLogs(wlResult.value);
+    else { setLogs([]); errors.push(`workLogs: ${wlResult.reason.message}`); }
 
-    const handleNewEntry = () => {
-      setEditingLog(blankDraft());
-      setSaveError(null);
-      setShowForm(true);
-    };
+    if (errors.length > 0) {
+      console.error("API errors:", errors);
+      setLoadErrors(errors);
+      // Still "connected" if at least employees loaded, since login can proceed
+      setConnectionStatus(empResult.status === "fulfilled" ? "partial" : "error");
+    } else {
+      setLoadErrors([]);
+      setConnectionStatus("connected");
+    }
 
-    const handleEditEntry = (log) => {
-      setEditingLog({ ...log, mileage: String(log.mileage ?? "") });
-      setSaveError(null);
-      setShowForm(true);
-    };
+    setDataLoading(false);
+  }, []);
 
-    const handleDeleteEntry = async (id) => {
-      const prevLogs = logs;
-      setLogs((prev) => prev.filter((l) => l.id !== id));
-      try {
-        await deleteWorkLogRemote(settings.googleScriptUrl, id);
-      } catch (err) {
-        console.error("Delete failed:", err);
-        setLogs(prevLogs); // roll back if the delete didn't actually happen server-side
-        alert(`Couldn't delete this entry: ${err.message}`);
-      }
-    };
+  const handleTestConnection = async (scriptUrl) => {
+    setTestStatus({ ok: false, message: "Testing…" });
+    try {
+      await loadEmployees(scriptUrl);
+      setTestStatus({ ok: true, message: "✓ Connected! Employees loaded." });
+    } catch (err) {
+      setTestStatus({ ok: false, message: `✗ Error: ${err.message}` });
+    }
+  };
 
-    const handleSaveEntry = async (form) => {
-      setSaving(true);
-      setSaveError(null);
-      const cleaned = { ...form, mileage: parseFloat(form.mileage) || 0 };
-      try {
-        const result = await saveWorkLog(settings.googleScriptUrl, cleaned);
-        const savedId = result && result.id ? result.id : cleaned.id;
-        setLogs((prev) => {
-          const exists = prev.some((l) => l.id === cleaned.id);
-          const savedRecord = { ...cleaned, id: savedId };
-          return exists ? prev.map((l) => (l.id === cleaned.id ? savedRecord : l)) : [...prev, savedRecord];
-        });
-        setShowForm(false);
-        setEditingLog(null);
-        setView("dashboard");
-        setSaveSuccess("✓ Entry saved successfully.");
-        setTimeout(() => setSaveSuccess(null), 3000);
-        // Pull the authoritative copy back from the sheet (server-calculated
-        // TotalHours, generated LogID, etc.) so Today's Entries reflects
-        // exactly what's in WorkLogs, not just the optimistic local copy.
-        refreshAllData(settings.googleScriptUrl);
-      } catch (err) {
-        console.error("Save failed:", err);
-        setSaveError(err.message);
-      } finally {
-        setSaving(false);
-      }
-    };
+  const handleSaveSettings = async (newSettings) => {
+    setSettings(newSettings);
+    await storageSet("pp-settings", newSettings, true);
+    refreshAllData(newSettings.googleScriptUrl);
+  };
 
-    const handleCancelForm = () => {
+  const handleClockIn = () => {
+    const now = new Date();
+    setActiveClock({ startedAt: now, clockIn: now.toTimeString().slice(0, 5) });
+  };
+
+  const blankDraft = (overrides = {}) => ({
+    id: null,
+    date: todayStr(),
+    employeeId: currentEmployeeId,
+    customerId: "",
+    projectId: "",
+    clockIn: "",
+    clockOut: "",
+    mileage: "",
+    laborType: "",
+    vehicle: "",
+    approval: "Pending",
+    description: "",
+    materials: "",
+    notes: "",
+    photo: "",
+    ...overrides,
+  });
+
+  const handleClockOut = () => {
+    const now = new Date();
+    const draft = blankDraft({ clockIn: activeClock.clockIn, clockOut: now.toTimeString().slice(0, 5) });
+    setActiveClock(null);
+    setEditingLog(draft);
+    setSaveError(null);
+    setShowForm(true);
+  };
+
+  const handleNewEntry = () => {
+    setEditingLog(blankDraft());
+    setSaveError(null);
+    setShowForm(true);
+  };
+
+  const handleEditEntry = (log) => {
+    setEditingLog({ ...log, mileage: String(log.mileage ?? "") });
+    setSaveError(null);
+    setShowForm(true);
+  };
+
+  const handleDeleteEntry = async (id) => {
+    const prevLogs = logs;
+    setLogs((prev) => prev.filter((l) => l.id !== id));
+    try {
+      await deleteWorkLogRemote(settings.googleScriptUrl, id);
+    } catch (err) {
+      console.error("Delete failed:", err);
+      setLogs(prevLogs); // roll back if the delete didn't actually happen server-side
+      alert(`Couldn't delete this entry: ${err.message}`);
+    }
+  };
+
+  const handleSaveEntry = async (form) => {
+    setSaving(true);
+    setSaveError(null);
+    const cleaned = { ...form, mileage: parseFloat(form.mileage) || 0 };
+    try {
+      const result = await saveWorkLog(settings.googleScriptUrl, cleaned);
+      const savedId = result && result.id ? result.id : cleaned.id;
+      setLogs((prev) => {
+        const exists = prev.some((l) => l.id === cleaned.id);
+        const savedRecord = { ...cleaned, id: savedId };
+        return exists ? prev.map((l) => (l.id === cleaned.id ? savedRecord : l)) : [...prev, savedRecord];
+      });
       setShowForm(false);
       setEditingLog(null);
-      setSaveError(null);
-    };
-
-    // Loading screen
-    if (dataLoading && !currentEmployee) {
-      return (
-        <div className="min-h-screen bg-stone-900 flex items-center justify-center">
-          <div className="text-center text-stone-400">
-            <RefreshCw size={32} className="animate-spin mx-auto mb-3 text-orange-500" />
-            <p className="uppercase text-xs font-bold">Initializing…</p>
-          </div>
-        </div>
-      );
+      setView("dashboard");
+      setSaveSuccess("✓ Entry saved successfully.");
+      setTimeout(() => setSaveSuccess(null), 3000);
+      // Pull the authoritative copy back from the sheet (server-calculated
+      // TotalHours, generated LogID, etc.) so Today's Entries reflects
+      // exactly what's in WorkLogs, not just the optimistic local copy.
+      refreshAllData(settings.googleScriptUrl);
+    } catch (err) {
+      console.error("Save failed:", err);
+      setSaveError(err.message);
+    } finally {
+      setSaving(false);
     }
+  };
 
-    // Login screen
-    if (!currentEmployee) {
-      return (
-        <>
-          <LoginScreen
-            employees={employees}
-            settings={settings}
-            onLogin={(empId) => setCurrentEmployeeId(empId)}
-            loading={dataLoading}
-            connectionStatus={connectionStatus}
-            loadErrors={loadErrors}
-            onOpenSettings={() => setShowSettingsModal(true)}
-          />
-          {showSettingsModal && (
-            <SettingsModal
-              settings={settings}
-              onSave={handleSaveSettings}
-              onClose={() => setShowSettingsModal(false)}
-              onTestConnection={handleTestConnection}
-              testStatus={testStatus}
-            />
-          )}
-        </>
-      );
-    }
+  const handleCancelForm = () => {
+    setShowForm(false);
+    setEditingLog(null);
+    setSaveError(null);
+  };
 
-    const dateLabel = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-
-    // Main app (after login)
+  // Loading screen
+  if (dataLoading && !currentEmployee) {
     return (
-      <div className="min-h-screen bg-stone-100">
-        <Header employee={currentEmployee} onLogout={() => setCurrentEmployeeId(null)} dateLabel={dateLabel} settings={settings} />
-
-        {saveSuccess && (
-          <div className="max-w-3xl mx-auto px-4 pt-3">
-            <AlertBox type="success">{saveSuccess}</AlertBox>
-          </div>
-        )}
-
-        {showForm ? (
-          <EntryForm
-            draft={editingLog}
-            employees={employees}
-            customers={customers}
-            projects={projects}
-            onSave={handleSaveEntry}
-            onCancel={handleCancelForm}
-            isEditing={!!editingLog.id}
-            saving={saving}
-            saveError={saveError}
-          />
-        ) : (
-          <>
-            {view === "dashboard" && <Dashboard logs={logs} customers={customers} projects={projects} currentEmployee={currentEmployee} setView={setView} />}
-            {view === "clock" && <TimeClock activeClock={activeClock} onClockIn={handleClockIn} onClockOut={handleClockOut} />}
-            {view === "records" && (
-              <Records
-                logs={logs}
-                employees={employees}
-                customers={customers}
-                projects={projects}
-                onEdit={handleEditEntry}
-                onDelete={handleDeleteEntry}
-                onNew={handleNewEntry}
-              />
-            )}
-            {view === "settings" && <SettingsPage settings={settings} onSave={handleSaveSettings} onTestConnection={handleTestConnection} testStatus={testStatus} connectionStatus={connectionStatus} />}
-          </>
-        )}
-
-        {!showForm && <BottomNav view={view} setView={setView} />}
+      <div className="min-h-screen bg-stone-900 flex items-center justify-center">
+        <div className="text-center text-stone-400">
+          <RefreshCw size={32} className="animate-spin mx-auto mb-3 text-orange-500" />
+          <p className="uppercase text-xs font-bold">Initializing…</p>
+        </div>
       </div>
     );
   }
+
+  // Login screen
+  if (!currentEmployee) {
+    return (
+      <>
+        <LoginScreen
+          employees={employees}
+          settings={settings}
+          onLogin={(empId) => setCurrentEmployeeId(empId)}
+          loading={dataLoading}
+          connectionStatus={connectionStatus}
+          loadErrors={loadErrors}
+          onOpenSettings={() => setShowSettingsModal(true)}
+        />
+        {showSettingsModal && (
+          <SettingsModal
+            settings={settings}
+            onSave={handleSaveSettings}
+            onClose={() => setShowSettingsModal(false)}
+            onTestConnection={handleTestConnection}
+            testStatus={testStatus}
+          />
+        )}
+      </>
+    );
+  }
+
+  const dateLabel = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+
+  // Main app (after login)
+  return (
+    <div className="min-h-screen bg-stone-100">
+      <Header employee={currentEmployee} onLogout={() => setCurrentEmployeeId(null)} dateLabel={dateLabel} settings={settings} />
+
+      {saveSuccess && (
+        <div className="max-w-3xl mx-auto px-4 pt-3">
+          <AlertBox type="success">{saveSuccess}</AlertBox>
+        </div>
+      )}
+
+      {showForm ? (
+        <EntryForm
+          draft={editingLog}
+          employees={employees}
+          customers={customers}
+          projects={projects}
+          onSave={handleSaveEntry}
+          onCancel={handleCancelForm}
+          isEditing={!!editingLog.id}
+          saving={saving}
+          saveError={saveError}
+        />
+      ) : (
+        <>
+          {view === "dashboard" && <Dashboard logs={logs} customers={customers} projects={projects} currentEmployee={currentEmployee} setView={setView} />}
+          {view === "clock" && <TimeClock activeClock={activeClock} onClockIn={handleClockIn} onClockOut={handleClockOut} />}
+          {view === "records" && (
+            <Records
+              logs={logs}
+              employees={employees}
+              customers={customers}
+              projects={projects}
+              onEdit={handleEditEntry}
+              onDelete={handleDeleteEntry}
+              onNew={handleNewEntry}
+            />
+          )}
+          {view === "settings" && <SettingsPage settings={settings} onSave={handleSaveSettings} onTestConnection={handleTestConnection} testStatus={testStatus} connectionStatus={connectionStatus} />}
+        </>
+      )}
+
+      {!showForm && <BottomNav view={view} setView={setView} />}
+    </div>
+  );
+}
